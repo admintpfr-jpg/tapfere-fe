@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+@theme {
+  /* Tapfere Primary Brand Blue (#5c6bfa) from previous step */
+  --color-primary-50: #eef0ff;
+  --color-primary-100: #dce1fe;
+  --color-primary-200: #b8c2fe;
+  --color-primary-300: #93a3fd;
+  --color-primary-400: #6f84fd;
+  --color-primary-500: #5c6bfa; 
+  --color-primary-600: #4a56c8;
+  --color-primary-700: #374096;
+  
+  /* Tapfere Secondary Navy (#2e305c) */
+  --color-secondary-50: #eaeaee;
+  --color-secondary-100: #d4d5dd;
+  --color-secondary-200: #a9acbb;
+  --color-secondary-300: #7e8299;
+  --color-secondary-400: #545977;
+  --color-secondary-500: #2e305c;
+
+  --color-background: #fdfdff;
+  --color-foreground: #1f1f1f;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    @apply antialiased transition-colors duration-500;
+  }
+}
