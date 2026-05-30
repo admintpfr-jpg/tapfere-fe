@@ -1,31 +1,125 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-
-// We will map over the existing page components here.
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import LoginPage from './app/(auth)/login/page';
+import NotFoundPage from './app/not-found/page';
+import UserManagement from './app/admin/UserManagement';
+import PatientManagement from './app/admin/PatientManagement';
+import TherapistManagement from './app/admin/TherapistManagement';
+import AdminLayout from './app/admin/layout';
+import AuthMonitor from './components/auth/AuthMonitor';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 
-const DashboardPage = () => (
-  <div className="flex flex-col h-screen w-full items-center justify-center bg-gray-50 font-['DM_Sans',sans-serif]">
-    <div className="p-10 bg-white rounded-2xl shadow-sm border border-gray-100 text-center">
-      <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to Tapfere!</h1>
-      <p className="text-gray-500 font-medium">You have successfully logged in via Google SSO.</p>
-    </div>
-  </div>
-);
-
-const AdminPage = () => <div>Admin Dashboard (Coming Soon)</div>;
-const ClientPage = () => <div>Client Dashboard (Coming Soon)</div>;
-const TherapistPage = () => <div>Therapist Dashboard (Coming Soon)</div>;
+import ChatPage from './app/client/ChatPage';
+import TherapistChat from './app/therapist/ChatPage';
+import SystemManagement from './app/admin/SystemManagement';
+import AdminChatView from './app/admin/AdminChatView';
+import AdminInbox from './app/admin/AdminInbox';
 
 export default function App() {
   return (
     <BrowserRouter>
+      <AuthMonitor />
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/admin/*" element={<AdminPage />} />
-        <Route path="/client/*" element={<ClientPage />} />
-        <Route path="/therapist/*" element={<TherapistPage />} />
+
+        {/* Admin routes — ADMIN only */}
+        <Route
+          path="/admin/user-management"
+          element={
+            <ProtectedRoute roles={['ADMIN']}>
+              <AdminLayout breadcrumb="User Management"><UserManagement /></AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/patients"
+          element={
+            <ProtectedRoute roles={['ADMIN']}>
+              <AdminLayout breadcrumb="Patient Management"><PatientManagement /></AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/therapists"
+          element={
+            <ProtectedRoute roles={['ADMIN']}>
+              <AdminLayout breadcrumb="Therapist Management"><TherapistManagement /></AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/system"
+          element={
+            <ProtectedRoute roles={['ADMIN']}>
+              <SystemManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/inbox"
+          element={
+            <ProtectedRoute roles={['ADMIN']}>
+              <AdminLayout breadcrumb="Inbox"><AdminInbox /></AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/chats/:role/:userId"
+          element={
+            <ProtectedRoute roles={['ADMIN']}>
+              <AdminLayout breadcrumb="Chat Monitor"><AdminChatView /></AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/*"
+          element={
+            <ProtectedRoute roles={['ADMIN']}>
+              <AdminLayout><div className="p-8 text-gray-500">Coming Soon</div></AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Client routes — CLIENT only */}
+        <Route
+          path="/client"
+          element={
+            <ProtectedRoute roles={['CLIENT']}>
+              <ChatPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/client/*"
+          element={
+            <ProtectedRoute roles={['CLIENT']}>
+              <ChatPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Therapist routes — THERAPIST only */}
+        <Route
+          path="/therapist"
+          element={
+            <ProtectedRoute roles={['THERAPIST']}>
+              <TherapistChat />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/therapist/*"
+          element={
+            <ProtectedRoute roles={['THERAPIST']}>
+              <TherapistChat />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   );
