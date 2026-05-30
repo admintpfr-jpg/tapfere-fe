@@ -29,4 +29,8 @@
     color: var(--color-foreground);
     @apply antialiased transition-colors duration-500;
   }
+
+  button, a, [role="button"], select, label[for] {
+    cursor: pointer;
+  }
 }
