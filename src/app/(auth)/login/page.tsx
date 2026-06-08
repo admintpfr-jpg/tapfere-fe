@@ -34,9 +34,9 @@ export default function LoginPage() {
         if (data.user?.role === 'ADMIN') {
           navigate('/admin/user-management');
         } else if (data.user?.role === 'CLIENT') {
-          navigate('/client');
+          navigate('/chats');
         } else if (data.user?.role === 'THERAPIST') {
-          navigate('/therapist');
+          navigate('/chats');
         } else {
           navigate('/dashboard');
         }
