@@ -5,8 +5,8 @@ type Role = 'ADMIN' | 'CLIENT' | 'THERAPIST';
 
 const roleHomePaths: Record<Role, string> = {
   ADMIN: '/admin/user-management',
-  CLIENT: '/client',
-  THERAPIST: '/therapist',
+  CLIENT: '/chats',
+  THERAPIST: '/chats',
 };
 
 export function getRoleHomePath(): string {

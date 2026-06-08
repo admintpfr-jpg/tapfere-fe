@@ -16,6 +16,21 @@ import SystemManagement from './app/admin/SystemManagement';
 import AdminChatView from './app/admin/AdminChatView';
 import AdminInbox from './app/admin/AdminInbox';
 
+function ChatsWrapper() {
+  let userRole: string | null = null;
+  try {
+    userRole = JSON.parse(localStorage.getItem('user') || '{}')?.role ?? null;
+  } catch {}
+
+  if (userRole === 'CLIENT') {
+    return <ChatPage />;
+  }
+  if (userRole === 'THERAPIST') {
+    return <TherapistChat />;
+  }
+  return <Navigate to="/login" replace />;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -83,38 +98,20 @@ export default function App() {
           }
         />
 
-        {/* Client routes — CLIENT only */}
+        {/* Unified chat routes — CLIENT or THERAPIST */}
         <Route
-          path="/client"
+          path="/chats"
           element={
-            <ProtectedRoute roles={['CLIENT']}>
-              <ChatPage />
+            <ProtectedRoute roles={['CLIENT', 'THERAPIST']}>
+              <ChatsWrapper />
             </ProtectedRoute>
           }
         />
         <Route
-          path="/client/*"
+          path="/chats/*"
           element={
-            <ProtectedRoute roles={['CLIENT']}>
-              <ChatPage />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Therapist routes — THERAPIST only */}
-        <Route
-          path="/therapist"
-          element={
-            <ProtectedRoute roles={['THERAPIST']}>
-              <TherapistChat />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/therapist/*"
-          element={
-            <ProtectedRoute roles={['THERAPIST']}>
-              <TherapistChat />
+            <ProtectedRoute roles={['CLIENT', 'THERAPIST']}>
+              <ChatsWrapper />
             </ProtectedRoute>
           }
         />
