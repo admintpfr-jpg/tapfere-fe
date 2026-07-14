@@ -15,6 +15,7 @@ import TherapistChat from './app/therapist/ChatPage';
 import SystemManagement from './app/admin/SystemManagement';
 import AdminChatView from './app/admin/AdminChatView';
 import AdminInbox from './app/admin/AdminInbox';
+import AdminDashboard from './app/admin/Dashboard';
 
 function ChatsWrapper() {
   let userRole: string | null = null;
@@ -41,6 +42,14 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
 
         {/* Admin routes — ADMIN only */}
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute roles={['ADMIN']}>
+              <AdminLayout breadcrumb="Dashboard"><AdminDashboard /></AdminLayout>
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/admin/user-management"
           element={

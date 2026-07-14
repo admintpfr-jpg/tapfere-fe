@@ -56,8 +56,8 @@ export default function LoginPage() {
       <div className="hidden md:flex relative h-full w-full flex-col justify-end bg-[#0f385a] overflow-hidden">
         
         {/* Soft abstract glowing orbs */}
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#1cb78d] rounded-full blur-[150px] opacity-20 pointer-events-none translate-x-1/3 -translate-y-1/3"></div>
-        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-[#5c6bfa] rounded-full blur-[150px] opacity-10 pointer-events-none -translate-x-1/3 translate-y-1/3"></div>
+        <div className="absolute top-0 right-0 w-[650px] h-[650px] bg-[#1cb78d] rounded-full blur-[150px] opacity-20 pointer-events-none translate-x-1/4 -translate-y-1/4"></div>
+        <div className="absolute bottom-0 left-0 w-[800px] h-[800px] bg-[#5c6bfa] rounded-full blur-[150px] opacity-10 pointer-events-none -translate-x-1/4 translate-y-1/4"></div>
 
         {/* Distinctive Brand Pattern/Watermarks */}
         <div className="absolute inset-0 flex items-center justify-center opacity-[0.04] pointer-events-none">
@@ -85,7 +85,7 @@ export default function LoginPage() {
         </div>
 
         {/* Text Header */}
-        <div className="relative z-10 p-20 pb-24 text-white">
+        <div className="relative z-10 p-20 pb-44 text-white">
           <h1 className="text-5xl lg:text-7xl font-semibold tracking-tight leading-[1.1] select-none text-white drop-shadow-lg">
             Restoring movement,<br/>
             enhancing <span className="font-serif italic font-medium tracking-normal text-[#1cb78d]">life.</span>
@@ -95,23 +95,23 @@ export default function LoginPage() {
 
       {/* Right Panel: Login Container */}
       <div className="relative h-full w-full flex flex-col justify-center bg-white border-l border-gray-100 shadow-[inset_0_0_100px_rgba(0,0,0,0.02)]">
-        <div className="max-w-md w-full mx-auto px-8 sm:px-12">
+        <div className="max-w-md w-full mx-auto px-8 sm:px-12 py-6">
           
           {/* Clinical/Medical Branding Logo */}
-          <div className="flex items-center mb-10 w-full">
+          <div className="flex items-center mb-6 w-full">
             <img 
               src="/Tapfere_Logo_1.svg" 
               alt="Tapfere Physio Platform" 
-              className="h-24 sm:h-28 w-auto object-contain select-none" 
+              className="h-16 sm:h-20 w-auto object-contain select-none" 
             />
           </div>
 
           {/* Heading Section */}
-          <div className="mb-8">
-            <h2 className="text-[28px] font-bold tracking-tight text-gray-900 mb-3">
+          <div className="mb-5">
+            <h2 className="text-[26px] font-bold tracking-tight text-gray-900 mb-2">
               Therapist Portal
             </h2>
-            <p className="text-[15px] text-gray-500 leading-relaxed max-w-[90%] font-medium">
+            <p className="text-[14px] text-gray-500 leading-relaxed max-w-[90%] font-medium">
               Securely sign in to manage patient records, track recovery progress, and collaborate with your clinic.
             </p>
           </div>
@@ -121,7 +121,7 @@ export default function LoginPage() {
             type="button"
             disabled={isLoading}
             onClick={() => loginWithGoogle()}
-            className="w-full py-4 px-4 bg-white hover:bg-gray-50 disabled:opacity-70 disabled:pointer-events-none border border-gray-200 hover:border-blue-300 rounded-xl flex items-center justify-center gap-3 transition-all duration-200 shadow-sm hover:shadow-md mb-8 group"
+            className="w-full py-3.5 px-4 bg-white hover:bg-gray-50 disabled:opacity-70 disabled:pointer-events-none border border-gray-200 hover:border-blue-300 rounded-xl flex items-center justify-center gap-3 transition-all duration-200 shadow-sm hover:shadow-md mb-5 group"
           >
             {isLoading ? (
               <Activity className="w-5 h-5 text-gray-400 animate-spin" />
@@ -133,19 +133,19 @@ export default function LoginPage() {
                 <path fill="#34A853" d="M12 23c3.24 0 5.97-1.07 7.96-2.92l-3.69-2.87c-1.03.69-2.35 1.1-4.27 1.1-3.21 0-5.97-2.78-6.89-5.7l-3.86 3A11.98 11.98 0 0012 23z" />
              </svg>
             )}
-            <span className="font-semibold text-gray-700 text-[15px] tracking-normal select-none group-hover:text-blue-700 transition-colors">
+            <span className="font-semibold text-gray-700 text-[14.5px] tracking-normal select-none group-hover:text-blue-700 transition-colors">
               {isLoading ? "Verifying access..." : "Secure Sign in with Google"}
             </span>
           </button>
 
           {/* Bottom Footers & Disclaimers */}
-          <div className="w-full h-px bg-gray-100 mb-8 mt-2"></div>
+          <div className="w-full h-px bg-gray-100 mb-5 mt-2"></div>
           
-          <p className="text-[13px] text-gray-400 font-normal leading-relaxed mb-6">
+          <p className="text-[12.5px] text-gray-400 font-normal leading-relaxed mb-4">
             By signing in, you agree to Tapfere's Terms of Service and HIPAA-compliant data practices.
           </p>
           
-          <div className="text-[13px] text-gray-500 font-medium select-none">
+          <div className="text-[12.5px] text-gray-500 font-medium select-none">
             Need help? — <a href="#" className="underline text-blue-600 hover:text-blue-800 transition-colors duration-150 relative z-10">Contact Support</a>
           </div>
 

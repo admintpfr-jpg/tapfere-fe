@@ -1,8 +1,18 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Check, Shield, MessageSquare, ChevronRight, ArrowLeft, Users } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { socket } from '../../lib/socket';
 import { toast } from 'react-toastify';
+
+const formatMsgDate = (dateStr: string) => {
+  const d = new Date(dateStr);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return 'Today';
+  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  return d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+};
 
 interface Message {
   id: string;
@@ -267,10 +277,20 @@ export default function TherapistChat() {
 
             {/* Messages */}
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 md:px-14 lg:px-20 py-6 space-y-5 select-text scroll-smooth custom-scrollbar bg-white">
-              {messages.map(msg => {
+              {messages.map((msg, i) => {
                 const isMe = msg.senderId === currentUser.id;
+                const prev = messages[i - 1];
+                const showDate = !prev || new Date(prev.createdAt).toDateString() !== new Date(msg.createdAt).toDateString();
                 return (
-                  <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                  <React.Fragment key={msg.id}>
+                  {showDate && (
+                    <div className="flex justify-center py-1">
+                      <span className="text-[11px] font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                        {formatMsgDate(msg.createdAt)}
+                      </span>
+                    </div>
+                  )}
+                  <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                     <div className={`max-w-[85%] md:max-w-[75%] px-4 md:px-5 py-3 shadow-sm text-[14px] md:text-[15px] font-medium leading-relaxed
                       ${isMe ? 'bg-[#0f385a] text-white rounded-[20px] rounded-br-[6px]' : 'bg-[#F3F4F6] text-gray-800 rounded-[20px] rounded-bl-[6px]'}`}>
                       {msg.content}
@@ -282,6 +302,7 @@ export default function TherapistChat() {
                       {isMe && <Check size={13} strokeWidth={3} className="text-[#1cb78d]" />}
                     </div>
                   </div>
+                  </React.Fragment>
                 );
               })}
             </div>
