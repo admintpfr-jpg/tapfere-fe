@@ -4,6 +4,16 @@ import { ArrowLeft, Search, MessageSquare, Shield, Check, Loader2 } from 'lucide
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'react-toastify';
 
+const formatMsgDate = (dateStr: string) => {
+  const d = new Date(dateStr);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return 'Today';
+  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  return d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+};
+
 interface Message {
   id: string;
   content: string;
@@ -241,10 +251,20 @@ export default function AdminChatView() {
                       <p className="text-[13px] text-gray-400 font-medium">No messages in this conversation yet</p>
                     </div>
                   ) : (
-                    messages.map(msg => {
+                    messages.map((msg, i) => {
                       const isClient = msg.senderId === activeConv.client.id;
+                      const prev = messages[i - 1];
+                      const showDate = !prev || new Date(prev.createdAt).toDateString() !== new Date(msg.createdAt).toDateString();
                       return (
-                        <div key={msg.id} className={`flex flex-col ${isClient ? 'items-start' : 'items-end'}`}>
+                        <React.Fragment key={msg.id}>
+                        {showDate && (
+                          <div className="flex justify-center py-1">
+                            <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                              {formatMsgDate(msg.createdAt)}
+                            </span>
+                          </div>
+                        )}
+                        <div className={`flex flex-col ${isClient ? 'items-start' : 'items-end'}`}>
                           <div className={`flex items-end gap-2 ${isClient ? 'flex-row' : 'flex-row-reverse'}`}>
                             <div className={`w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-[9px] font-bold
                               ${isClient ? 'bg-blue-100 text-blue-600' : 'bg-[#1cb78d]/15 text-[#1cb78d]'}`}>
@@ -270,6 +290,7 @@ export default function AdminChatView() {
                             </span>
                           </div>
                         </div>
+                        </React.Fragment>
                       );
                     })
                   )}
