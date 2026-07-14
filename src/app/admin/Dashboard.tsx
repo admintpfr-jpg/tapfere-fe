@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'react-toastify';
-import AdminLayout from './layout';
 
 interface DashboardStats {
   totalPatients: number;
@@ -200,12 +199,10 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <AdminLayout breadcrumb="Dashboard">
-        <div className="flex flex-col items-center justify-center h-[60vh] gap-3">
-          <div className="w-12 h-12 border-4 border-[#1cb78d] border-t-transparent rounded-full animate-spin" />
-          <p className="text-[13px] text-gray-400 font-semibold">Aggregating platform metrics...</p>
-        </div>
-      </AdminLayout>
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-3">
+        <div className="w-12 h-12 border-4 border-[#1cb78d] border-t-transparent rounded-full animate-spin" />
+        <p className="text-[13px] text-gray-400 font-semibold">Aggregating platform metrics...</p>
+      </div>
     );
   }
 
@@ -219,8 +216,8 @@ export default function Dashboard() {
     : '0';
 
   return (
-    <AdminLayout breadcrumb="Dashboard">
-      <div className="max-w-7xl mx-auto space-y-6 pb-12 font-['DM_Sans',sans-serif]">
+    <>
+    <div className="max-w-7xl mx-auto space-y-6 pb-12 font-['DM_Sans',sans-serif]">
         
         {/* ── Dashboard Header ── */}
         <div className="flex items-center justify-between">
@@ -723,6 +720,6 @@ export default function Dashboard() {
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.1); border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
       `}</style>
-    </AdminLayout>
+    </>
   );
 }
