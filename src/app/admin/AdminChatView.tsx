@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, MessageSquare, Shield, Check, Loader2 } from 'lucide-react';
+import { ArrowLeft, Search, MessageSquare, Shield, Check, Loader2, Copy, ExternalLink } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'react-toastify';
 
@@ -29,6 +29,100 @@ interface Conversation {
   client: { id: string; name: string; displayName?: string; avatar?: string; email?: string };
   messages: Message[];
 }
+
+const CopyLinkButton = ({ url, isMe }: { url: string; isMe: boolean }) => {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      toast.success('Link copied!', { autoClose: 1000, position: 'top-right' });
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error('Failed to copy link');
+    }
+  };
+  return (
+    <button
+      onClick={handleCopy}
+      className={`inline-flex items-center justify-center p-1 rounded transition-colors ml-1.5 ${
+        isMe
+          ? 'bg-white/10 hover:bg-white/20 text-sky-200 hover:text-white'
+          : 'bg-black/5 hover:bg-black/10 text-gray-500 hover:text-gray-700'
+      }`}
+      title="Copy Link"
+    >
+      {copied ? <Check size={12} className="text-[#1cb78d]" /> : <Copy size={12} />}
+    </button>
+  );
+};
+
+const parseLinks = (text: string, isMe: boolean) => {
+  if (!text) return text;
+  const regex = /\[([^\]]+)\]\(((?:https?:\/\/|www\.)[^\s)]+)\)|((?:https?:\/\/|www\.)[^\s]+)/gi;
+  const parts: (string | { text: string; url: string })[] = [];
+  let lastIndex = 0;
+  let match;
+  
+  while ((match = regex.exec(text)) !== null) {
+    const index = match.index;
+    if (index > lastIndex) {
+      parts.push(text.substring(lastIndex, index));
+    }
+    
+    const isMarkdown = !!match[1];
+    const linkText = isMarkdown ? match[1] : match[3];
+    const linkUrl = isMarkdown ? match[2] : match[3];
+    
+    let href = linkUrl;
+    if (!/^https?:\/\//i.test(href)) {
+      href = 'https://' + href;
+    }
+    
+    parts.push({
+      text: linkText,
+      url: href
+    });
+    
+    lastIndex = regex.lastIndex;
+  }
+  
+  if (lastIndex < text.length) {
+    parts.push(text.substring(lastIndex));
+  }
+  
+  return parts.map((part, i) => {
+    if (typeof part === 'string') {
+      return part;
+    }
+    
+    return (
+      <span
+        key={i}
+        className={`inline-flex items-center rounded px-1.5 py-0.5 mx-0.5 select-none align-middle ${
+          isMe
+            ? 'bg-white/10 border border-white/20 text-white'
+            : 'bg-gray-100 border border-gray-200 text-gray-800'
+        }`}
+      >
+        <a
+          href={part.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`inline-flex items-center gap-1 hover:underline select-text font-semibold break-all ${
+            isMe ? 'text-sky-200 hover:text-white' : 'text-[#1cb78d] hover:text-[#179a77]'
+          }`}
+        >
+          <ExternalLink size={12} className="flex-shrink-0" />
+          <span>{part.text}</span>
+        </a>
+        <CopyLinkButton url={part.url} isMe={isMe} />
+      </span>
+    );
+  });
+};
 
 export default function AdminChatView() {
   const { role, userId } = useParams<{ role: string; userId: string }>();
@@ -278,7 +372,7 @@ export default function AdminChatView() {
                                 ? 'bg-[#f0f2f5] text-gray-800 rounded-bl-[6px]'
                                 : 'bg-[#0f385a] text-white rounded-br-[6px]'
                               }`}>
-                              {msg.content}
+                              {parseLinks(msg.content, !isClient)}
                             </div>
                           </div>
                           <div className={`flex items-center gap-1 mt-1 px-8 ${isClient ? '' : 'flex-row-reverse'}`}>
