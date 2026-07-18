@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, MessageSquare, Shield, Check, Loader2, Copy, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Search, MessageSquare, Shield, Check, Loader2, Copy, ExternalLink, UserX } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'react-toastify';
 
@@ -25,8 +25,8 @@ interface Message {
 
 interface Conversation {
   id: string;
-  therapist: { id: string; name: string; displayName?: string; avatar?: string; email?: string };
-  client: { id: string; name: string; displayName?: string; avatar?: string; email?: string };
+  therapist: { id: string; name: string; displayName?: string; avatar?: string; email?: string; isActive?: boolean };
+  client: { id: string; name: string; displayName?: string; avatar?: string; email?: string; isActive?: boolean };
   messages: Message[];
 }
 
@@ -187,6 +187,9 @@ export default function AdminChatView() {
       ? conv.therapist.displayName || conv.therapist.name
       : conv.client.displayName || conv.client.name;
 
+  const isPartnerDeactivated = (conv: Conversation) =>
+    (role === 'client' ? conv.therapist.isActive : conv.client.isActive) === false;
+
   const getPartnerAvatar = (conv: Conversation) =>
     role === 'client'
       ? conv.therapist.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(conv.therapist.displayName || conv.therapist.name)}&background=f3f4f6&color=4b5563`
@@ -282,7 +285,14 @@ export default function AdminChatView() {
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-center mb-0.5">
-                        <p className={`text-[13px] font-bold truncate ${isActive ? 'text-white' : 'text-gray-900'}`}>{partnerName}</p>
+                        <div className="flex items-center min-w-0">
+                          <p className={`text-[13px] font-bold truncate ${isActive ? 'text-white' : 'text-gray-900'}`}>{partnerName}</p>
+                          {isPartnerDeactivated(conv) && (
+                            <span className={`ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide flex-shrink-0 ${isActive ? 'bg-white/20 text-white' : 'bg-red-50 text-red-600'}`}>
+                              Deactivated
+                            </span>
+                          )}
+                        </div>
                         {lastMsg && (
                           <span className={`text-[10px] font-semibold flex-shrink-0 ml-1 ${isActive ? 'text-white/60' : 'text-gray-400'}`}>
                             {formatDistanceToNow(new Date(lastMsg.createdAt), { addSuffix: false })}
@@ -318,7 +328,14 @@ export default function AdminChatView() {
                   alt={getPartnerName(activeConv)}
                 />
                 <div>
-                  <p className="text-[14px] font-bold text-gray-900 leading-tight">{getPartnerName(activeConv)}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-[14px] font-bold text-gray-900 leading-tight">{getPartnerName(activeConv)}</p>
+                    {isPartnerDeactivated(activeConv) && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-red-50 text-red-600">
+                        <UserX size={10} /> Deactivated
+                      </span>
+                    )}
+                  </div>
                   <p className="text-[11px] text-gray-400">
                     {role === 'client' ? activeConv.therapist.email : activeConv.client.email}
                   </p>

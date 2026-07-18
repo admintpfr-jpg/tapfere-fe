@@ -558,6 +558,15 @@ export default function ClientChat() {
 
             {/* Input */}
             <div className="px-3 md:px-14 lg:px-20 pb-4 md:pb-8 pt-2 bg-white relative">
+              {peerDeactivated ? (
+                <div className="flex items-center justify-center p-4 bg-red-50 rounded-[24px] border border-red-100 shadow-sm">
+                  <p className="text-[13px] text-red-600 font-bold flex items-center gap-2 text-center">
+                    <UserX size={16} className="flex-shrink-0" />
+                    Your therapist's account has been deactivated. Messaging is disabled.
+                  </p>
+                </div>
+              ) : (
+              <>
               {showLinkPrompt && (
                 <div className="absolute bottom-[100%] left-3 md:left-14 lg:left-20 right-3 md:right-14 lg:right-20 mb-2 p-4 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200 max-w-sm">
                   <h3 className="text-[13px] font-bold text-gray-900 flex items-center gap-1.5">
@@ -639,6 +648,8 @@ export default function ClientChat() {
                   </button>
                 </div>
               </div>
+              </>
+              )}
             </div>
           </>
         ) : (
