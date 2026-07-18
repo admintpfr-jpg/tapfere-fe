@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Check, Shield, User, MessageSquare, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Search, Check, Shield, User, MessageSquare, ChevronRight, ArrowLeft, Link, Copy, ExternalLink } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { socket } from '../../lib/socket';
 import { toast } from 'react-toastify';
@@ -12,6 +12,100 @@ const formatMsgDate = (dateStr: string) => {
   if (d.toDateString() === today.toDateString()) return 'Today';
   if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
   return d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+const CopyLinkButton = ({ url, isMe }: { url: string; isMe: boolean }) => {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      toast.success('Link copied!', { autoClose: 1000, position: 'top-right' });
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error('Failed to copy link');
+    }
+  };
+  return (
+    <button
+      onClick={handleCopy}
+      className={`inline-flex items-center justify-center p-1 rounded transition-colors ml-1.5 ${
+        isMe
+          ? 'bg-white/10 hover:bg-white/20 text-sky-200 hover:text-white'
+          : 'bg-black/5 hover:bg-black/10 text-gray-500 hover:text-gray-700'
+      }`}
+      title="Copy Link"
+    >
+      {copied ? <Check size={12} className="text-[#1cb78d]" /> : <Copy size={12} />}
+    </button>
+  );
+};
+
+const parseLinks = (text: string, isMe: boolean) => {
+  if (!text) return text;
+  const regex = /\[([^\]]+)\]\(((?:https?:\/\/|www\.)[^\s)]+)\)|((?:https?:\/\/|www\.)[^\s]+)/gi;
+  const parts: (string | { text: string; url: string })[] = [];
+  let lastIndex = 0;
+  let match;
+  
+  while ((match = regex.exec(text)) !== null) {
+    const index = match.index;
+    if (index > lastIndex) {
+      parts.push(text.substring(lastIndex, index));
+    }
+    
+    const isMarkdown = !!match[1];
+    const linkText = isMarkdown ? match[1] : match[3];
+    const linkUrl = isMarkdown ? match[2] : match[3];
+    
+    let href = linkUrl;
+    if (!/^https?:\/\//i.test(href)) {
+      href = 'https://' + href;
+    }
+    
+    parts.push({
+      text: linkText,
+      url: href
+    });
+    
+    lastIndex = regex.lastIndex;
+  }
+  
+  if (lastIndex < text.length) {
+    parts.push(text.substring(lastIndex));
+  }
+  
+  return parts.map((part, i) => {
+    if (typeof part === 'string') {
+      return part;
+    }
+    
+    return (
+      <span
+        key={i}
+        className={`inline-flex items-center rounded px-1.5 py-0.5 mx-0.5 select-none align-middle ${
+          isMe
+            ? 'bg-white/10 border border-white/20 text-white'
+            : 'bg-gray-100 border border-gray-200 text-gray-800'
+        }`}
+      >
+        <a
+          href={part.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`inline-flex items-center gap-1 hover:underline select-text font-semibold break-all ${
+            isMe ? 'text-sky-200 hover:text-white' : 'text-[#1cb78d] hover:text-[#179a77]'
+          }`}
+        >
+          <ExternalLink size={12} className="flex-shrink-0" />
+          <span>{part.text}</span>
+        </a>
+        <CopyLinkButton url={part.url} isMe={isMe} />
+      </span>
+    );
+  });
 };
 
 interface Message {
@@ -37,10 +131,15 @@ export default function ClientChat() {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  
+  const [showLinkPrompt, setShowLinkPrompt] = useState(false);
+  const [linkPromptUrl, setLinkPromptUrl] = useState('');
+  const [linkPromptText, setLinkPromptText] = useState('');
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeConvRef = useRef<Conversation | null>(null);
   const conversationsRef = useRef<Conversation[]>([]);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
   const token = localStorage.getItem('access_token');
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -103,6 +202,7 @@ export default function ClientChat() {
 
   const selectConversation = async (conv: Conversation) => {
     setActiveConv(conv);
+    setShowLinkPrompt(false);
     socket.emit('joinRoom', conv.id);
     try {
       const res = await fetch(`${apiUrl}/chat/conversations/${conv.id}/messages`, {
@@ -122,6 +222,72 @@ export default function ClientChat() {
       senderId: currentUser.id,
       content: newMessage.trim()
     }, () => setNewMessage(''));
+  };
+
+  const handleInsertLinkClick = async () => {
+    if (showLinkPrompt) {
+      setShowLinkPrompt(false);
+      return;
+    }
+    setShowLinkPrompt(true);
+    try {
+      const clipboardText = await navigator.clipboard.readText();
+      const urlRegex = /^(https?:\/\/)?([\w.-]+)\.([a-z]{2,})(:\d+)?(\/\S*)?$/i;
+      if (clipboardText && urlRegex.test(clipboardText.trim())) {
+        setLinkPromptUrl(clipboardText.trim());
+      }
+    } catch {
+      // Ignore clipboard read permission error
+    }
+  };
+
+  const handleQuickPasteLink = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        setLinkPromptUrl(text.trim());
+        toast.success("Link pasted from clipboard!");
+      } else {
+        toast.warn("Clipboard is empty");
+      }
+    } catch {
+      toast.error("Could not read clipboard. Please paste manually.");
+    }
+  };
+
+  const handleInsertLink = () => {
+    if (!linkPromptUrl.trim()) return;
+    
+    let formattedUrl = linkPromptUrl.trim();
+    if (!/^https?:\/\//i.test(formattedUrl)) {
+      formattedUrl = 'https://' + formattedUrl;
+    }
+    
+    const linkString = linkPromptText.trim()
+      ? `[${linkPromptText.trim()}](${formattedUrl})`
+      : formattedUrl;
+      
+    const textarea = textareaRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const text = textarea.value;
+      const before = text.substring(0, start);
+      const after = text.substring(end);
+      setNewMessage(before + linkString + after);
+      
+      setTimeout(() => {
+        textarea.focus();
+        const newCursorPos = start + linkString.length;
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+      }, 0);
+    } else {
+      setNewMessage(prev => prev ? `${prev} ${linkString}` : linkString);
+    }
+    
+    setShowLinkPrompt(false);
+    setLinkPromptUrl('');
+    setLinkPromptText('');
   };
 
   if (loading) {
@@ -262,7 +428,7 @@ export default function ClientChat() {
                   <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                     <div className={`max-w-[85%] md:max-w-[75%] px-4 md:px-5 py-3 shadow-sm text-[14px] md:text-[15px] font-medium leading-relaxed
                       ${isMe ? 'bg-[#0f385a] text-white rounded-[20px] rounded-br-[6px]' : 'bg-[#F3F4F6] text-gray-800 rounded-[20px] rounded-bl-[6px]'}`}>
-                      {msg.content}
+                      {parseLinks(msg.content, isMe)}
                     </div>
                     <div className="flex items-center gap-1 mt-1.5 px-2">
                       <span className="text-[11px] text-gray-400 font-bold tracking-wide">
@@ -277,9 +443,60 @@ export default function ClientChat() {
             </div>
 
             {/* Input */}
-            <div className="px-3 md:px-14 lg:px-20 pb-4 md:pb-8 pt-2 bg-white">
+            <div className="px-3 md:px-14 lg:px-20 pb-4 md:pb-8 pt-2 bg-white relative">
+              {showLinkPrompt && (
+                <div className="absolute bottom-[100%] left-3 md:left-14 lg:left-20 right-3 md:right-14 lg:right-20 mb-2 p-4 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200 max-w-sm">
+                  <h3 className="text-[13px] font-bold text-gray-900 flex items-center gap-1.5">
+                    <Link size={14} className="text-[#1cb78d]" /> Insert Link
+                  </h3>
+                  <div className="flex flex-col gap-2">
+                    <input
+                      type="text"
+                      placeholder="Paste URL (e.g. https://example.com)"
+                      value={linkPromptUrl}
+                      onChange={e => setLinkPromptUrl(e.target.value)}
+                      className="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-[12.5px] outline-none focus:border-[#1cb78d] transition-all text-gray-800 placeholder-gray-400"
+                      autoFocus
+                    />
+                    <input
+                      type="text"
+                      placeholder="Link Text (optional)"
+                      value={linkPromptText}
+                      onChange={e => setLinkPromptText(e.target.value)}
+                      className="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-[12.5px] outline-none focus:border-[#1cb78d] transition-all text-gray-800 placeholder-gray-400"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center gap-2 mt-1">
+                    <button
+                      type="button"
+                      onClick={handleQuickPasteLink}
+                      className="text-[11px] font-bold text-[#1cb78d] hover:underline"
+                    >
+                      Paste from Clipboard
+                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { setShowLinkPrompt(false); setLinkPromptUrl(''); setLinkPromptText(''); }}
+                        className="px-3 py-1.5 text-gray-500 hover:bg-gray-100 rounded-xl text-[12px] font-bold transition-all"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleInsertLink}
+                        disabled={!linkPromptUrl.trim()}
+                        className="px-4 py-1.5 bg-[#0f385a] hover:bg-[#0c2e48] disabled:bg-[#0f385a]/40 text-white rounded-xl text-[12px] font-bold transition-all"
+                      >
+                        Insert
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="bg-white border border-gray-200 shadow-[0_5px_30px_rgba(0,0,0,0.04)] rounded-[24px] p-2 focus-within:shadow-[0_8px_40px_rgba(28,183,141,0.08)] focus-within:border-[#1cb78d] transition-all flex flex-col">
                 <textarea
+                  ref={textareaRef}
                   value={newMessage}
                   onChange={e => setNewMessage(e.target.value)}
                   onKeyDown={e => {
@@ -288,7 +505,17 @@ export default function ClientChat() {
                   placeholder="Type a message..."
                   className="w-full bg-transparent border-none outline-none resize-none px-4 py-2 text-[14px] md:text-[15px] font-medium text-gray-800 placeholder-gray-400 h-10 custom-scrollbar"
                 />
-                <div className="flex justify-end items-center mt-1 px-3 pb-2 pt-1 border-t border-gray-50/50">
+                <div className="flex justify-between items-center mt-1 px-3 pb-2 pt-1 border-t border-gray-50/50">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleInsertLinkClick}
+                      className="p-2 text-gray-400 hover:text-[#0f385a] hover:bg-gray-50 rounded-xl transition-all cursor-pointer"
+                      title="Insert or Paste Link"
+                    >
+                      <Link size={18} />
+                    </button>
+                  </div>
                   <button
                     onClick={() => sendMessage()}
                     disabled={!newMessage.trim()}
