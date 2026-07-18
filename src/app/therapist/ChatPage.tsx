@@ -3,6 +3,8 @@ import { Search, Check, Shield, MessageSquare, ChevronRight, ArrowLeft, Users, L
 import { formatDistanceToNow } from 'date-fns';
 import { socket } from '../../lib/socket';
 import { toast } from 'react-toastify';
+import MessageTicks, { type MessageStatus } from '../../components/chat/MessageTicks';
+import { formatPresence } from '../../lib/presence';
 
 const formatMsgDate = (dateStr: string) => {
   const d = new Date(dateStr);
@@ -114,6 +116,7 @@ interface Message {
   senderId: string;
   conversationId: string;
   createdAt: string;
+  status?: MessageStatus;
   sender: { id: string; name: string; displayName?: string; avatar?: string };
 }
 
@@ -141,13 +144,62 @@ export default function TherapistChat() {
   const [linkPromptUrl, setLinkPromptUrl] = useState('');
   const [linkPromptText, setLinkPromptText] = useState('');
 
+  const [peerOnline, setPeerOnline] = useState(false);
+  const [peerLastSeen, setPeerLastSeen] = useState<string | null>(null);
+  const [peerTyping, setPeerTyping] = useState(false);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeConvRef = useRef<Conversation | null>(null);
   const conversationsRef = useRef<Conversation[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const peerIdRef = useRef<string | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isTypingRef = useRef(false);
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
   const token = localStorage.getItem('access_token');
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+  // Reflect a delivered/read status update onto my own messages + the conv list.
+  const applyStatus = (
+    conversationId: string,
+    status: MessageStatus,
+    messageIds?: string[],
+  ) => {
+    const upgrade = (m: Message): Message => {
+      if (m.conversationId !== conversationId || m.senderId !== currentUser.id) return m;
+      if (status === 'READ') return { ...m, status: 'READ' };
+      if (status === 'DELIVERED' && m.status !== 'READ' && (!messageIds || messageIds.includes(m.id)))
+        return { ...m, status: 'DELIVERED' };
+      return m;
+    };
+    setMessages(prev => prev.map(upgrade));
+    setConversations(prev => prev.map(c =>
+      c.id === conversationId && c.messages?.[0]
+        ? { ...c, messages: [upgrade(c.messages[0])] }
+        : c
+    ));
+  };
+
+  const stopTyping = () => {
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    const convId = activeConvRef.current?.id;
+    if (isTypingRef.current && convId) socket.emit('typing', { conversationId: convId, isTyping: false });
+    isTypingRef.current = false;
+  };
+
+  const handleTypingActivity = () => {
+    const convId = activeConvRef.current?.id;
+    if (!convId) return;
+    if (!isTypingRef.current) {
+      socket.emit('typing', { conversationId: convId, isTyping: true });
+      isTypingRef.current = true;
+    }
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      socket.emit('typing', { conversationId: convId, isTyping: false });
+      isTypingRef.current = false;
+    }, 1500);
+  };
 
   useEffect(() => {
     activeConvRef.current = activeConv;
@@ -166,12 +218,33 @@ export default function TherapistChat() {
     });
 
     socket.on('newMessage', (message: Message) => {
-      if (activeConvRef.current && message.conversationId === activeConvRef.current.id) {
+      const isActive = activeConvRef.current && message.conversationId === activeConvRef.current.id;
+      if (isActive) {
         setMessages(prev => [...prev, message]);
+        if (message.senderId !== currentUser.id) {
+          socket.emit('markRead', { conversationId: message.conversationId });
+          setPeerTyping(false);
+        }
       }
       setConversations(prev => prev.map(c =>
         c.id === message.conversationId ? { ...c, messages: [message] } : c
       ));
+    });
+
+    socket.on('messageStatus', (payload: { conversationId: string; status: MessageStatus; messageIds?: string[] }) => {
+      applyStatus(payload.conversationId, payload.status, payload.messageIds);
+    });
+
+    socket.on('presence', (p: { userId: string; online: boolean; lastSeen: string | null }) => {
+      if (p.userId !== peerIdRef.current) return;
+      setPeerOnline(p.online);
+      if (!p.online) setPeerLastSeen(p.lastSeen ?? null);
+    });
+
+    socket.on('typing', (t: { conversationId: string; userId: string; isTyping: boolean }) => {
+      if (t.conversationId === activeConvRef.current?.id && t.userId === peerIdRef.current) {
+        setPeerTyping(t.isTyping);
+      }
     });
 
     fetchConversations().then(data => {
@@ -181,6 +254,10 @@ export default function TherapistChat() {
     return () => {
       socket.off('connect');
       socket.off('newMessage');
+      socket.off('messageStatus');
+      socket.off('presence');
+      socket.off('typing');
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       socket.disconnect();
     };
   }, []);
@@ -208,7 +285,19 @@ export default function TherapistChat() {
   const selectConversation = async (conv: Conversation) => {
     setActiveConv(conv);
     setShowLinkPrompt(false);
+    setPeerTyping(false);
+    const peerId = conv.client.id;
+    peerIdRef.current = peerId;
+    setPeerOnline(false);
+    setPeerLastSeen(null);
     socket.emit('joinRoom', conv.id);
+    socket.emit('markRead', { conversationId: conv.id });
+    socket.emit('getPresence', peerId, (res: { userId: string; online: boolean; lastSeen: string | null }) => {
+      if (res && res.userId === peerIdRef.current) {
+        setPeerOnline(!!res.online);
+        setPeerLastSeen(res.lastSeen ?? null);
+      }
+    });
     try {
       const res = await fetch(`${apiUrl}/chat/conversations/${conv.id}/messages`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -223,9 +312,9 @@ export default function TherapistChat() {
     if (!newMessage.trim() || !activeConv) return;
     socket.emit('sendMessage', {
       conversationId: activeConv.id,
-      senderId: currentUser.id,
       content: newMessage.trim()
     }, () => setNewMessage(''));
+    stopTyping();
   };
 
   const handleInsertLinkClick = async () => {
@@ -428,16 +517,23 @@ export default function TherapistChat() {
               >
                 <ArrowLeft size={20} strokeWidth={2.5} />
               </button>
-              <div className="w-[42px] h-[42px] rounded-[14px] bg-[#0f385a]/10 flex items-center justify-center shadow-sm flex-shrink-0">
+              <div className="relative w-[42px] h-[42px] rounded-[14px] bg-[#0f385a]/10 flex items-center justify-center shadow-sm flex-shrink-0">
                 <span className="text-[14px] font-extrabold text-[#0f385a]">
                   {initials(activeConv.client.displayName || activeConv.client.name)}
                 </span>
+                {peerOnline && (
+                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#1cb78d] border-2 border-white" />
+                )}
               </div>
               <div className="min-w-0">
                 <h2 className="text-[15px] md:text-[17px] font-extrabold text-gray-900 leading-tight truncate">
                   {activeConv.client.displayName || activeConv.client.name}
                 </h2>
-                <p className="text-[11px] text-gray-400 mt-0.5">{activeConv.client.role === 'admin' ? 'Administrator' : 'Patient'}</p>
+                <p className={`text-[11px] mt-0.5 font-bold ${peerTyping || peerOnline ? 'text-[#1cb78d]' : 'text-gray-400'}`}>
+                  {peerTyping
+                    ? 'typing…'
+                    : `${activeConv.client.role === 'admin' ? 'Administrator' : 'Patient'} · ${formatPresence(peerOnline, peerLastSeen)}`}
+                </p>
               </div>
             </div>
 
@@ -465,7 +561,7 @@ export default function TherapistChat() {
                       <span className="text-[11px] text-gray-400 font-bold tracking-wide">
                         {new Date(msg.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                       </span>
-                      {isMe && <Check size={13} strokeWidth={3} className="text-[#1cb78d]" />}
+                      <MessageTicks status={msg.status} isMe={isMe} />
                     </div>
                   </div>
                   </React.Fragment>
@@ -538,7 +634,7 @@ export default function TherapistChat() {
                     <textarea
                       ref={textareaRef}
                       value={newMessage}
-                      onChange={e => setNewMessage(e.target.value)}
+                      onChange={e => { setNewMessage(e.target.value); handleTypingActivity(); }}
                       onKeyDown={e => {
                         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
                       }}
