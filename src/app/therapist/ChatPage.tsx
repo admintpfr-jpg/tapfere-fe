@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Check, Shield, MessageSquare, ChevronRight, ArrowLeft, Users, Link, Copy, ExternalLink } from 'lucide-react';
+import { Search, Check, Shield, MessageSquare, ChevronRight, ArrowLeft, Users, Link, Copy, ExternalLink, UserX } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { socket } from '../../lib/socket';
 import { toast } from 'react-toastify';
@@ -123,7 +123,7 @@ interface Message {
 interface Conversation {
   id: string;
   therapist: { id: string; name: string; displayName?: string; avatar?: string; email?: string };
-  client: { id: string; name: string; displayName?: string; avatar?: string; email: string; role?: string };
+  client: { id: string; name: string; displayName?: string; avatar?: string; email: string; role?: string; isActive?: boolean };
   messages: Message[];
 }
 
@@ -395,6 +395,7 @@ export default function TherapistChat() {
   }
 
   const isSupportChannel = activeConv?.therapist.email === 'support@tapfere.com';
+  const peerDeactivated = activeConv?.client.isActive === false;
 
   return (
     <div className="flex h-screen bg-[#F9FAFB] overflow-hidden font-[Inter,sans-serif]">
@@ -486,7 +487,14 @@ export default function TherapistChat() {
                   </div>
                   <div className="ml-3.5 flex-1 min-w-0">
                     <div className="flex justify-between items-center mb-0.5">
-                      <h3 className={`text-[14px] font-bold truncate ${isActive ? 'text-white' : 'text-gray-900'}`}>{name}</h3>
+                      <div className="flex items-center min-w-0">
+                        <h3 className={`text-[14px] font-bold truncate ${isActive ? 'text-white' : 'text-gray-900'}`}>{name}</h3>
+                        {conv.client.isActive === false && (
+                          <span className={`ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide flex-shrink-0 ${isActive ? 'bg-white/20 text-white' : 'bg-red-50 text-red-600'}`}>
+                            Deactivated
+                          </span>
+                        )}
+                      </div>
                       <span className={`text-[11px] font-bold flex-shrink-0 ml-2 ${isActive ? 'text-white/70' : 'text-gray-400'}`}>
                         {lastMsg ? formatDistanceToNow(new Date(lastMsg.createdAt)) : ''}
                       </span>
@@ -529,11 +537,17 @@ export default function TherapistChat() {
                 <h2 className="text-[15px] md:text-[17px] font-extrabold text-gray-900 leading-tight truncate">
                   {activeConv.client.displayName || activeConv.client.name}
                 </h2>
-                <p className={`text-[11px] mt-0.5 font-bold ${peerTyping || peerOnline ? 'text-[#1cb78d]' : 'text-gray-400'}`}>
-                  {peerTyping
-                    ? 'typing…'
-                    : `${activeConv.client.role === 'admin' ? 'Administrator' : 'Patient'} · ${formatPresence(peerOnline, peerLastSeen)}`}
-                </p>
+                {peerDeactivated ? (
+                  <p className="text-[11px] mt-0.5 font-bold text-red-500 flex items-center gap-1">
+                    <UserX size={12} /> Account deactivated
+                  </p>
+                ) : (
+                  <p className={`text-[11px] mt-0.5 font-bold ${peerTyping || peerOnline ? 'text-[#1cb78d]' : 'text-gray-400'}`}>
+                    {peerTyping
+                      ? 'typing…'
+                      : `${activeConv.client.role === 'admin' ? 'Administrator' : 'Patient'} · ${formatPresence(peerOnline, peerLastSeen)}`}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -576,6 +590,13 @@ export default function TherapistChat() {
                   <p className="text-[13px] text-gray-500 font-bold flex items-center gap-2 text-center">
                     <Shield size={16} className="text-gray-400 flex-shrink-0" />
                     Tapfere Support announcement channel. Replies are disabled.
+                  </p>
+                </div>
+              ) : peerDeactivated ? (
+                <div className="flex items-center justify-center p-4 bg-red-50 rounded-[24px] border border-red-100 shadow-sm">
+                  <p className="text-[13px] text-red-600 font-bold flex items-center gap-2 text-center">
+                    <UserX size={16} className="flex-shrink-0" />
+                    This patient's account has been deactivated. Messaging is disabled.
                   </p>
                 </div>
               ) : (
