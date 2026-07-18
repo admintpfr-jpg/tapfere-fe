@@ -12,6 +12,7 @@ interface WhitelistUser {
   id: string;
   email: string;
   role: string;
+  displayName?: string | null;
   createdAt: string;
   lastLogin: string | null;
 }
@@ -77,6 +78,7 @@ export default function UserManagement() {
   const [roleFilter, setRoleFilter] = useState('ALL');
 
   const [newEmail, setNewEmail] = useState('');
+  const [newName,  setNewName]  = useState('');
   const [newRole,  setNewRole]  = useState('THERAPIST');
   const [adding,   setAdding]   = useState(false);
 
@@ -113,14 +115,18 @@ export default function UserManagement() {
       const res = await fetch(`${apiUrl}/users/whitelist`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ email: newEmail, role: newRole }),
+        body: JSON.stringify({
+          email: newEmail,
+          role: newRole,
+          ...(newName.trim() && { displayName: newName.trim() }),
+        }),
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
         throw new Error(d.message || 'Failed to add user');
       }
       toast.success('User added to platform');
-      setNewEmail(''); setNewRole('THERAPIST');
+      setNewEmail(''); setNewName(''); setNewRole('THERAPIST');
       setAddModalOpen(false);
       fetchWhitelist();
     } catch (e: any) {
@@ -308,8 +314,8 @@ export default function UserManagement() {
                           <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${ROLE_CONFIG[u.role]?.dot ?? 'bg-gray-400'}`} />
                         </div>
                         <div>
-                          <p className="text-[13px] font-semibold text-gray-900">{u.email}</p>
-                          <p className="text-[11px] text-gray-400">{u.id?.slice(0, 8)}…</p>
+                          <p className="text-[13px] font-semibold text-gray-900">{u.displayName || u.email}</p>
+                          <p className="text-[11px] text-gray-400">{u.displayName ? u.email : `${u.id?.slice(0, 8)}…`}</p>
                         </div>
                       </div>
                     </td>
@@ -362,7 +368,7 @@ export default function UserManagement() {
       </div>
 
       {/* ── Add User Modal ── */}
-      <Modal isOpen={isAddModalOpen} onClose={() => { setAddModalOpen(false); setNewEmail(''); setNewRole('THERAPIST'); }} title="Add User">
+      <Modal isOpen={isAddModalOpen} onClose={() => { setAddModalOpen(false); setNewEmail(''); setNewName(''); setNewRole('THERAPIST'); }} title="Add User">
         <form onSubmit={handleAdd} className="space-y-5">
           <div>
             <label className="block text-[11px] font-semibold text-gray-500 mb-2 uppercase tracking-wider">
@@ -375,6 +381,19 @@ export default function UserManagement() {
               required
               autoFocus
               placeholder="dr.someone@tapfere.com"
+              className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-[13px] text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#1cb78d]/20 focus:border-[#1cb78d] transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-500 mb-2 uppercase tracking-wider">
+              Name <span className="text-gray-400 font-normal normal-case">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              placeholder="Dr. Someone"
               className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-[13px] text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#1cb78d]/20 focus:border-[#1cb78d] transition-all"
             />
           </div>
